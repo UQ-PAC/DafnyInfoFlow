@@ -215,12 +215,12 @@ namespace DafnyPipeline {
       }
 
       DefineSec();
-      DefineLatticeType();
+      //DefineLatticeType();
       DefineSecAttack();
-      AddLatticeDefinition();
-      if (!defaultClass.Members.Exists(x => x.Name == "CAS")) {
+      //AddLatticeDefinition();
+      /*if (!defaultClass.Members.Exists(x => x.Name == "CAS")) {
         DefineCAS();
-      }
+      }*/
       if (!defaultClass.Members.Exists(x => x.Name == "order")) {
         DefinePartialOrderOperator();
       }
@@ -242,7 +242,7 @@ namespace DafnyPipeline {
       }
     }
 
-    private void AddLatticeDefinition() {
+    /*private void AddLatticeDefinition() {
       if (!defaultClass.Members.Exists(x=>x.Name == "lattice")) {
         // If not defined, use a default of a binary lattice
         List<ExpressionPair> defaultBinaryLattice = new List<ExpressionPair>() {
@@ -254,9 +254,9 @@ namespace DafnyPipeline {
         defaultClass.Members.Add(latticeDef);
       }
       // Checking validity of lattice definition is done in phase 2 while adding assertions
-    }
+    }*/
 
-    private void DefineCAS() {
+    /*private void DefineCAS() {
       //Create a CAS method of the form:
       //method CAS<T(==)> (x: T, e1: T, e2: T) returns(b: bool, x2: T)
       //  ensures x == e1 ==> x2 == e2 && b;
@@ -351,7 +351,7 @@ namespace DafnyPipeline {
 
       DefaultClassDecl defaultClass = (DefaultClassDecl)topDecls.Find(x => x.Name == "_default");
       defaultClass.Members.Add(CAS);
-    }
+    }*/
 
     private Specification<Expression> defaultDecreases() {
       return new Specification<Expression>(new List<Expression>(), null);
@@ -367,25 +367,25 @@ namespace DafnyPipeline {
 
       var a = nameSeg("a");
       var b = nameSeg("b");
-      var l = nameSeg("l");
+      //var l = nameSeg("l");
       //List<AttributedExpression> reqs = new List<AttributedExpression>()
       //{
       //  new AttributedExpression(new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.In, a, l)),
       //  new AttributedExpression(new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.In, b, l))
       //};
-      var assumption = new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.And,
+      /*var assumption = new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.And,
         new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.In, a, l),
         new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.In, b, l)
-      );
+      );*/
       List<Formal> formals = new List<Formal>() {
-            new Formal(Token.NoToken, l.Name, latticeType, true, false, null),
+          //  new Formal(Token.NoToken, l.Name, latticeType, true, false, null),
             new Formal(Token.NoToken, a.Name, secType, true, false, null),
             new Formal(Token.NoToken, b.Name, secType, true, false, null)
           };
-      Expression body = new StmtExpr(Token.NoToken, 
+      /*Expression body = new StmtExpr(Token.NoToken, 
         new AssumeStmt(Token.NoToken, Token.NoToken, assumption, null), 
         new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.In, b, new SeqSelectExpr(Token.NoToken, true, l, a, null))
-      );
+      );*/
 
       var orderPredicate = new Predicate(
         Token.NoToken,
@@ -400,7 +400,7 @@ namespace DafnyPipeline {
         // Create a copy of default decreases, otherwise, during resolution it can be mutated, causing errors during translation.
         // This only happens if there is a name segment using a value from the lattice
         new Specification<Expression>(new List<Expression>(), null),
-        body,
+        nameSeg("FILL_THIS_IN"),
         Predicate.BodyOriginKind.OriginalOrInherited,
         null,
         null,
@@ -413,7 +413,7 @@ namespace DafnyPipeline {
       defaultClass.Members.Add(orderPredicate);
     }
 
-    private void DefineLatticeType() {
+    /*private void DefineLatticeType() {
       if (!topDecls.Exists(x => x.Name == "Lattice")) {
         var module = program.DefaultModuleDef;
         var latticeMap = new MapType(true, secType, new SetType(true, secType));
@@ -425,7 +425,7 @@ namespace DafnyPipeline {
         this.latticeType = UserDefinedType.FromTopLevelDecl(Token.NoToken, topDecls.Find(x => x.Name == "Lattice" && x is TypeSynonymDecl));
       }
 
-    }
+    }*/
 
     private void DefineSec() {
       List<DatatypeCtor> ctors = new List<DatatypeCtor>();
@@ -505,7 +505,8 @@ namespace DafnyPipeline {
 
     private Method genRely(Method m, ref InformationFlowState st) {
       List<AttributedExpression> relyConditions = new List<AttributedExpression>();
-      foreach (string ifVar in st.Vars.Keys) {
+      relyConditions.Add(new AttributedExpression(new LiteralExpr(Token.NoToken,true)));  // default true Rely
+      /*foreach (string ifVar in st.Vars.Keys) {
         // Necessary for calls to order predicate
         relyConditions.Add(new AttributedExpression(new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.In, callGamma(ifVar), nameSeg("lattice"))));
         relyConditions.Add(new AttributedExpression(new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.In, callPolicy(ifVar), nameSeg("lattice"))));
@@ -518,7 +519,7 @@ namespace DafnyPipeline {
           ));
         // R3: Security level is less than or equal to security policy
         relyConditions.Add(new AttributedExpression(callOrder(callGamma(ifVar), callPolicy(ifVar))));
-      }
+      }*/
       return new Method(
         Token.NoToken,
         "Rely"+m.Name,

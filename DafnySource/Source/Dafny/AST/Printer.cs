@@ -760,6 +760,9 @@ namespace Microsoft.Dafny {
         sep = " |";
       }
       if (dt.Members.Count == 0) {
+        if (dt.Name == "Sec") {
+            wr.Write(" // Change as needed");
+        }
         wr.WriteLine();
       } else {
         wr.WriteLine(" {");
