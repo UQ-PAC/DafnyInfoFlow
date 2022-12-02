@@ -221,8 +221,14 @@ namespace DafnyPipeline {
       /*if (!defaultClass.Members.Exists(x => x.Name == "CAS")) {
         DefineCAS();
       }*/
-      if (!defaultClass.Members.Exists(x => x.Name == "order")) {
+      if (!defaultClass.Members.Exists(x => x.Name == "leq")) {
         DefinePartialOrderOperator();
+      }
+      if (!defaultClass.Members.Exists(x => x.Name == "join")) {
+        DefineJoinOperator();
+      }
+      if (!defaultClass.Members.Exists(x => x.Name == "meet")) {
+        DefineMeetOperator();
       }
 
       try {
@@ -365,8 +371,8 @@ namespace DafnyPipeline {
       //        b in l[a]
       //}
 
-      var a = nameSeg("a");
-      var b = nameSeg("b");
+      var l1 = nameSeg("l1");
+      var l2 = nameSeg("l2");
       //var l = nameSeg("l");
       //List<AttributedExpression> reqs = new List<AttributedExpression>()
       //{
@@ -379,17 +385,19 @@ namespace DafnyPipeline {
       );*/
       List<Formal> formals = new List<Formal>() {
           //  new Formal(Token.NoToken, l.Name, latticeType, true, false, null),
-            new Formal(Token.NoToken, a.Name, secType, true, false, null),
-            new Formal(Token.NoToken, b.Name, secType, true, false, null)
+            new Formal(Token.NoToken, l1.Name, secType, true, false, null),
+            new Formal(Token.NoToken, l2.Name, secType, true, false, null)
           };
-      /*Expression body = new StmtExpr(Token.NoToken, 
-        new AssumeStmt(Token.NoToken, Token.NoToken, assumption, null), 
-        new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.In, b, new SeqSelectExpr(Token.NoToken, true, l, a, null))
-      );*/
+      Expression low = nameSeg("Low");
+      Expression high = nameSeg("High");
+      Expression body = new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.Or, 
+                            new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.Eq, l1, low), 
+                            new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.Eq, l2, high)
+                        );
 
       var orderPredicate = new Predicate(
         Token.NoToken,
-        "order",
+        "leq",
         false,
         true,
         emptyTypeArgs,
@@ -400,7 +408,7 @@ namespace DafnyPipeline {
         // Create a copy of default decreases, otherwise, during resolution it can be mutated, causing errors during translation.
         // This only happens if there is a name segment using a value from the lattice
         new Specification<Expression>(new List<Expression>(), null),
-        nameSeg("FILL_THIS_IN"),
+        body,
         Predicate.BodyOriginKind.OriginalOrInherited,
         null,
         null,
@@ -411,6 +419,98 @@ namespace DafnyPipeline {
       program.BuiltIns.CreateArrowTypeDecl(formals.Count);
       DefaultClassDecl defaultClass = (DefaultClassDecl)topDecls.Find(x => x.Name == "_default");
       defaultClass.Members.Add(orderPredicate);
+    }
+
+    private void DefineJoinOperator() {
+      //Create a default join function of the form:
+      //function method join(l1:SL, l2:SL):SL {
+      //  if leq(l1,l2) then l2 else l1
+      //}
+
+      var l1 = nameSeg("l1");
+      var l2 = nameSeg("l2");
+      List<Formal> formals = new List<Formal>() {
+            new Formal(Token.NoToken, l1.Name, secType, true, false, null),
+            new Formal(Token.NoToken, l2.Name, secType, true, false, null)
+      };
+      List<ActualBinding> args = new List<ActualBinding>() {
+              new ActualBinding(null, l1),
+              new ActualBinding(null, l2)
+            };
+      Expression guard = new FunctionCallExpr(Token.NoToken, "leq", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args);
+      Expression ifcase = new IdentifierExpr(Token.NoToken, "l2");
+      Expression elsecase = new IdentifierExpr(Token.NoToken, "l1");
+      Expression body = new ITEExpr(Token.NoToken, false, guard, ifcase, elsecase);
+
+      var join = new Function(
+        Token.NoToken,
+        "join",
+        false,
+        false, // Non-ghost makes it a function method, which is needed if it is called in non-specification contexts, like a parameter to a method
+        emptyTypeArgs,
+        formals,
+        null,
+        secType,
+        defaultRequires,
+        defaultReads,
+        defaultEnsures,
+        defaultDecreases(),
+        body,
+        null,
+        null,
+        null,
+        null
+      );
+      // Needed for the type resolution phase
+      program.BuiltIns.CreateArrowTypeDecl(formals.Count);
+      DefaultClassDecl defaultClass = (DefaultClassDecl)topDecls.Find(x => x.Name == "_default");
+      defaultClass.Members.Add(join);
+    }
+
+private void DefineMeetOperator() {
+      //Create a default meet function of the form:
+      //function method meet(l1:SL, l2:SL):SL {
+      //  if leq(l1,l2) then l1 else l2
+      //}
+
+      var l1 = nameSeg("l1");
+      var l2 = nameSeg("l2");
+      List<Formal> formals = new List<Formal>() {
+            new Formal(Token.NoToken, l1.Name, secType, true, false, null),
+            new Formal(Token.NoToken, l2.Name, secType, true, false, null)
+      };
+      List<ActualBinding> args = new List<ActualBinding>() {
+              new ActualBinding(null, l1),
+              new ActualBinding(null, l2)
+            };
+      Expression guard = new FunctionCallExpr(Token.NoToken, "leq", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args);
+      Expression ifcase = new IdentifierExpr(Token.NoToken, "l1");
+      Expression elsecase = new IdentifierExpr(Token.NoToken, "l2");
+      Expression body = new ITEExpr(Token.NoToken, false, guard, ifcase, elsecase);
+
+      var join = new Function(
+        Token.NoToken,
+        "meet",
+        false,
+        false, // Non-ghost makes it a function method, which is needed if it is called in non-specification contexts, like a parameter to a method
+        emptyTypeArgs,
+        formals,
+        null,
+        secType,
+        defaultRequires,
+        defaultReads,
+        defaultEnsures,
+        defaultDecreases(),
+        body,
+        null,
+        null,
+        null,
+        null
+      );
+      // Needed for the type resolution phase
+      program.BuiltIns.CreateArrowTypeDecl(formals.Count);
+      DefaultClassDecl defaultClass = (DefaultClassDecl)topDecls.Find(x => x.Name == "_default");
+      defaultClass.Members.Add(join);
     }
 
     /*private void DefineLatticeType() {
@@ -432,22 +532,23 @@ namespace DafnyPipeline {
       var members = new List<MemberDecl>();
 
       var module = program.DefaultModuleDef;
-      if (!topDecls.Exists(x => x.Name == "Sec")) {
+      if (!topDecls.Exists(x => x.Name == "L")) {
         // As default, define a binary lattice
         var lowCtr = new DatatypeCtor(Token.NoToken, "Low", new List<Formal>(), null);
         var highCtr = new DatatypeCtor(Token.NoToken, "High", new List<Formal>(), null);
         ctors.Add(lowCtr);
         ctors.Add(highCtr);
-        var secIndData = new IndDatatypeDecl(Token.NoToken, "Sec", module, emptyTypeArgs, ctors, members, null, false);
+        var secIndData = new IndDatatypeDecl(Token.NoToken, "L", module, emptyTypeArgs, ctors, members, null, false);
         secType = UserDefinedType.FromTopLevelDecl(Token.NoToken, secIndData);
         // Add to front so it is defined at the top of the file. Use insert so the actual list is mutated
         topDecls.Insert(0, secIndData);
       } else {
-        var secDef = topDecls.Find(x => x.Name == "Sec" && x is IndDatatypeDecl);
+        var secDef = topDecls.Find(x => x.Name == "L" && x is IndDatatypeDecl);
         this.numSecLevels = ((IndDatatypeDecl)secDef).Ctors.Count;
         secType = UserDefinedType.FromTopLevelDecl(Token.NoToken, secDef);
       }
     }
+
     private void Visit(Program program, ref InformationFlowState st) {
       // Default module is not in program.Modules, so visit separately.
       // Visit before other modules so lattice type and Sec are defined
@@ -497,7 +598,7 @@ namespace DafnyPipeline {
     }
 
     private void Visit(IndDatatypeDecl indDataDecl, ref InformationFlowState st) {
-      if (indDataDecl.Name == "Sec") {
+      if (indDataDecl.Name == "L") {
         this.numSecLevels = indDataDecl.Ctors.Count;
         secType = UserDefinedType.FromTopLevelDecl(Token.NoToken, indDataDecl);
       }
@@ -1577,7 +1678,7 @@ namespace DafnyPipeline {
       return new ApplySuffix(
                  Token.NoToken,
                  null,
-                 nameSeg("order"),
+                 nameSeg("leq"),
                  new List<ActualBinding>() {
                     new ActualBinding(null, nameSeg("lattice")),
                     new ActualBinding(null, leftVal),
