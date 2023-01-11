@@ -378,18 +378,7 @@ namespace DafnyPipeline {
 
       var l1 = nameSeg("l1");
       var l2 = nameSeg("l2");
-      //var l = nameSeg("l");
-      //List<AttributedExpression> reqs = new List<AttributedExpression>()
-      //{
-      //  new AttributedExpression(new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.In, a, l)),
-      //  new AttributedExpression(new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.In, b, l))
-      //};
-      /*var assumption = new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.And,
-        new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.In, a, l),
-        new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.In, b, l)
-      );*/
       List<Formal> formals = new List<Formal>() {
-          //  new Formal(Token.NoToken, l.Name, latticeType, true, false, null),
             new Formal(Token.NoToken, l1.Name, secType, true, false, null),
             new Formal(Token.NoToken, l2.Name, secType, true, false, null)
           };
@@ -404,7 +393,7 @@ namespace DafnyPipeline {
         Token.NoToken,
         "leq",
         false,
-        true,
+        false,
         emptyTypeArgs,
         formals,
         defaultRequires,
@@ -534,6 +523,10 @@ private void DefinePartialOrderLemma() {
             new Formal(Token.NoToken, l2.Name, secType, true, false, null),
             new Formal(Token.NoToken, l3.Name, secType, true, false, null)
       };
+      List<ActualBinding> args11 = new List<ActualBinding>() {
+              new ActualBinding(null, l1),
+              new ActualBinding(null, l1)
+      };
       List<ActualBinding> args12 = new List<ActualBinding>() {
               new ActualBinding(null, l1),
               new ActualBinding(null, l2)
@@ -551,7 +544,7 @@ private void DefinePartialOrderLemma() {
               new ActualBinding(null, l3)
       };
       var ensures = new List<AttributedExpression>() {
-        new AttributedExpression(new FunctionCallExpr(Token.NoToken, "leq", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12)),
+        new AttributedExpression(new FunctionCallExpr(Token.NoToken, "leq", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args11)),
         new AttributedExpression(new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.Imp,
           new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.And, 
             new FunctionCallExpr(Token.NoToken, "leq", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12),
@@ -1374,7 +1367,7 @@ private void DefinePartialOrderLemma() {
       }
       if (method.Body != null) {
         var paramGamas = new List<UpdateStmt>();
-        if (method.Outs.Count != 0) {
+        /*if (method.Outs.Count != 0) {
           // Return statements are treated as assignments to globals, so generate required information flow variables
           foreach (Formal outVar in method.Outs) {
             var varName = method.Name + "_return_" + outVar.Name;
@@ -1429,7 +1422,7 @@ private void DefinePartialOrderLemma() {
               st.currentClassMembers.Insert(2, securePolicy);
             }
           }
-        }
+        }*/
         // If there is a call to another method, the labelNum will be reset, so store it before visiting body
         var currentLabel = st.labelNum;
         Visit(method.Body, ref st);
