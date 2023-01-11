@@ -689,16 +689,16 @@ private void DefinePartialOrderLemma() {
               new ActualBinding(null, l2)
       };
       List<Expression> args121 = new List<Expression>() {
-          new FunctionCallExpr(Token.NoToken, "join", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12),
+          new FunctionCallExpr(Token.NoToken, "meet", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12),
           l1
       };
       List<Expression> args122 = new List<Expression>() {
-          new FunctionCallExpr(Token.NoToken, "join", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12),
+          new FunctionCallExpr(Token.NoToken, "meet", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12),
           l2
       };
       List<Expression> args312 = new List<Expression>() {
           l3,
-          new FunctionCallExpr(Token.NoToken, "join", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12)
+          new FunctionCallExpr(Token.NoToken, "meet", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12)
       };
       var ensures = new List<AttributedExpression>() {
         new AttributedExpression(new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.And,
