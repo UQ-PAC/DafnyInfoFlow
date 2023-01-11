@@ -230,6 +230,11 @@ namespace DafnyPipeline {
       if (!defaultClass.Members.Exists(x => x.Name == "meet")) {
         DefineMeetOperator();
       }
+      if (!defaultClass.Members.Exists(x => x.Name == "partialorder")) {
+        DefinePartialOrderLemma();
+        DefineJoinLemma();
+        DefineMeetLemma();
+      }
 
       try {
         Visit(program, ref currentState);
@@ -488,7 +493,7 @@ private void DefineMeetOperator() {
       Expression elsecase = new IdentifierExpr(Token.NoToken, "l2");
       Expression body = new ITEExpr(Token.NoToken, false, guard, ifcase, elsecase);
 
-      var join = new Function(
+      var meet = new Function(
         Token.NoToken,
         "meet",
         false,
@@ -510,7 +515,223 @@ private void DefineMeetOperator() {
       // Needed for the type resolution phase
       program.BuiltIns.CreateArrowTypeDecl(formals.Count);
       DefaultClassDecl defaultClass = (DefaultClassDecl)topDecls.Find(x => x.Name == "_default");
-      defaultClass.Members.Add(join);
+      defaultClass.Members.Add(meet);
+    }
+
+private void DefinePartialOrderLemma() {
+      //Create the partial order lemma:
+      //lemma partialorder(l1:SL, l2:SL, l3:L) 
+      //  ensures leq(l1, l1)
+      //  ensures leq(l1, l2) && leq(l2, l1) ==> l1 == l2
+      //  ensures leq(l1, l2) && leq(l2, l3) ==> leq(l1, l3)
+      //{}   
+
+      var l1 = nameSeg("l1");
+      var l2 = nameSeg("l2");
+      var l3 = nameSeg("l3");
+      List<Formal> formals = new List<Formal>() {
+            new Formal(Token.NoToken, l1.Name, secType, true, false, null),
+            new Formal(Token.NoToken, l2.Name, secType, true, false, null),
+            new Formal(Token.NoToken, l3.Name, secType, true, false, null)
+      };
+      List<ActualBinding> args12 = new List<ActualBinding>() {
+              new ActualBinding(null, l1),
+              new ActualBinding(null, l2)
+      };
+      List<ActualBinding> args21 = new List<ActualBinding>() {
+              new ActualBinding(null, l2),
+              new ActualBinding(null, l1)
+      };
+      List<ActualBinding> args23 = new List<ActualBinding>() {
+              new ActualBinding(null, l2),
+              new ActualBinding(null, l3)
+      };
+      List<ActualBinding> args13 = new List<ActualBinding>() {
+              new ActualBinding(null, l1),
+              new ActualBinding(null, l3)
+      };
+      var ensures = new List<AttributedExpression>() {
+        new AttributedExpression(new FunctionCallExpr(Token.NoToken, "leq", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12)),
+        new AttributedExpression(new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.Imp,
+          new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.And, 
+            new FunctionCallExpr(Token.NoToken, "leq", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12),
+            new FunctionCallExpr(Token.NoToken, "leq", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args21)
+          ),
+          new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.Eq, l1, l2)
+        )),
+        new AttributedExpression(new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.Imp,
+          new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.And, 
+            new FunctionCallExpr(Token.NoToken, "leq", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12),
+            new FunctionCallExpr(Token.NoToken, "leq", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args23)
+          ),
+          new FunctionCallExpr(Token.NoToken, "leq", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args13)
+        ))
+      };
+      var partialorder = new Lemma(
+        Token.NoToken,
+        "partialorder",
+        false,
+        emptyTypeArgs, 
+        formals,
+        new List<Formal>(),
+        defaultRequires,
+        defaultModifies,
+        ensures,
+        defaultDecreases(),
+        new BlockStmt(Token.NoToken, Token.NoToken, new List<Statement>()),
+        null,
+        null
+      );
+      //Needed for the type resolution phase
+      program.BuiltIns.CreateArrowTypeDecl(formals.Count);
+      DefaultClassDecl defaultClass = (DefaultClassDecl)topDecls.Find(x => x.Name == "_default");
+      defaultClass.Members.Add(partialorder);
+    }
+
+    private void DefineJoinLemma() {
+      //Create the partial order lemma:
+      //lemma joinLemma(l1:SL, l2:SL, l3:L) 
+      //  ensures leq(l1, join(l1, l2)) && leq(l2, join(l1, l2))
+      //  ensures leq(l1, l3) && leq(l2, l3) ==> leq(join(l1, l2), l3)
+      //{}   
+
+      var l1 = nameSeg("l1");
+      var l2 = nameSeg("l2");
+      var l3 = nameSeg("l3");
+      List<Formal> formals = new List<Formal>() {
+            new Formal(Token.NoToken, l1.Name, secType, true, false, null),
+            new Formal(Token.NoToken, l2.Name, secType, true, false, null),
+            new Formal(Token.NoToken, l3.Name, secType, true, false, null)
+      };
+      List<ActualBinding> args12 = new List<ActualBinding>() {
+              new ActualBinding(null, l1),
+              new ActualBinding(null, l2)
+      };
+      List<ActualBinding> args13 = new List<ActualBinding>() {
+              new ActualBinding(null, l1),
+              new ActualBinding(null, l3)
+      };
+      List<ActualBinding> args23 = new List<ActualBinding>() {
+              new ActualBinding(null, l2),
+              new ActualBinding(null, l3)
+      };
+      List<Expression> args112 = new List<Expression>() {
+          l1,
+          new FunctionCallExpr(Token.NoToken, "join", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12)
+      };
+      List<Expression> args212 = new List<Expression>() {
+          l2,
+          new FunctionCallExpr(Token.NoToken, "join", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12)
+      };
+      List<Expression> args123 = new List<Expression>() {
+          new FunctionCallExpr(Token.NoToken, "join", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12),
+          l3
+      };
+      var ensures = new List<AttributedExpression>() {
+        new AttributedExpression(new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.And,
+          new ApplyExpr(Token.NoToken, nameSeg("leq"), args112),
+          new ApplyExpr(Token.NoToken, nameSeg("leq"), args212)
+        )),
+        new AttributedExpression(new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.Imp,
+          new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.And, 
+            new FunctionCallExpr(Token.NoToken, "leq", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args13),
+            new FunctionCallExpr(Token.NoToken, "leq", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args23)
+          ),
+          new ApplyExpr(Token.NoToken, nameSeg("leq"), args123)
+        ))
+      };
+      var joinLemma = new Lemma(
+        Token.NoToken,
+        "joinLemma",
+        false,
+        emptyTypeArgs, 
+        formals,
+        new List<Formal>(),
+        defaultRequires,
+        defaultModifies,
+        ensures,
+        defaultDecreases(),
+        new BlockStmt(Token.NoToken, Token.NoToken, new List<Statement>()),
+        null,
+        null
+      );
+      //Needed for the type resolution phase
+      program.BuiltIns.CreateArrowTypeDecl(formals.Count);
+      DefaultClassDecl defaultClass = (DefaultClassDecl)topDecls.Find(x => x.Name == "_default");
+      defaultClass.Members.Add(joinLemma);
+    }
+
+    private void DefineMeetLemma() {
+      //Create the partial order lemma:
+      //lemma meetLemma(l1:SL, l2:SL, l3:L) 
+      //  ensures leq(meet(l1, l2), l1) && leq(meet(l1, l2), l2)
+      //  ensures leq(l3, l1) && leq(l3, l2) ==> leq(l3, meet(l1, l2))
+      //{}   
+
+      var l1 = nameSeg("l1");
+      var l2 = nameSeg("l2");
+      var l3 = nameSeg("l3");
+      List<Formal> formals = new List<Formal>() {
+            new Formal(Token.NoToken, l1.Name, secType, true, false, null),
+            new Formal(Token.NoToken, l2.Name, secType, true, false, null),
+            new Formal(Token.NoToken, l3.Name, secType, true, false, null)
+      };
+      List<ActualBinding> args12 = new List<ActualBinding>() {
+              new ActualBinding(null, l1),
+              new ActualBinding(null, l2)
+      };
+      List<ActualBinding> args31 = new List<ActualBinding>() {
+              new ActualBinding(null, l3),
+              new ActualBinding(null, l1)
+      };
+      List<ActualBinding> args32 = new List<ActualBinding>() {
+              new ActualBinding(null, l3),
+              new ActualBinding(null, l2)
+      };
+      List<Expression> args121 = new List<Expression>() {
+          new FunctionCallExpr(Token.NoToken, "join", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12),
+          l1
+      };
+      List<Expression> args122 = new List<Expression>() {
+          new FunctionCallExpr(Token.NoToken, "join", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12),
+          l2
+      };
+      List<Expression> args312 = new List<Expression>() {
+          l3,
+          new FunctionCallExpr(Token.NoToken, "join", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args12)
+      };
+      var ensures = new List<AttributedExpression>() {
+        new AttributedExpression(new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.And,
+          new ApplyExpr(Token.NoToken, nameSeg("leq"), args121),
+          new ApplyExpr(Token.NoToken, nameSeg("leq"), args122)
+        )),
+        new AttributedExpression(new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.Imp,
+          new BinaryExpr(Token.NoToken, BinaryExpr.Opcode.And, 
+            new FunctionCallExpr(Token.NoToken, "leq", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args31),
+            new FunctionCallExpr(Token.NoToken, "leq", new ImplicitThisExpr(Token.NoToken), Token.NoToken, args32)
+          ),
+          new ApplyExpr(Token.NoToken, nameSeg("leq"), args312)
+        ))
+      };
+      var meetLemma = new Lemma(
+        Token.NoToken,
+        "meetLemma",
+        false,
+        emptyTypeArgs, 
+        formals,
+        new List<Formal>(),
+        defaultRequires,
+        defaultModifies,
+        ensures,
+        defaultDecreases(),
+        new BlockStmt(Token.NoToken, Token.NoToken, new List<Statement>()),
+        null,
+        null
+      );
+      //Needed for the type resolution phase
+      program.BuiltIns.CreateArrowTypeDecl(formals.Count);
+      DefaultClassDecl defaultClass = (DefaultClassDecl)topDecls.Find(x => x.Name == "_default");
+      defaultClass.Members.Add(meetLemma);
     }
 
     /*private void DefineLatticeType() {
@@ -699,7 +920,7 @@ private void DefineMeetOperator() {
         Visit(m, ref st);
         //Define Rely and Guarantee for this method
         if (!st.addAssertions) {
-          if (m.Name == "CAS" || m.Name.StartsWith("Rely") || m is Constructor) {
+          if (m.Name == "CAS" || m.Name.StartsWith("Rely") || m is Constructor || m is Lemma) {
             continue;
           }
           int methodIndex = classDecl.Members.IndexOf(m);
@@ -1140,7 +1361,7 @@ private void DefineMeetOperator() {
     }
 
     private void Visit(Method method, ref InformationFlowState st) {
-      if (method.Name == "CAS" || method.Name.StartsWith("Rely") || method is Constructor) {
+      if (method.Name == "CAS" || method.Name.StartsWith("Rely") || method is Constructor || method is Lemma) {
         return;
       }
       st.parentMethod = method;
